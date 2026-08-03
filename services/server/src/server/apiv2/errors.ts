@@ -266,7 +266,8 @@ export type VerificationErrorCode =
   | "unsupported_language"
   | "already_verified"
   | "internal_error"
-  | "no_similar_match_found";
+  | "no_similar_match_found"
+  | "similarity_search_timeout";
 
 export type VerificationErrorParameters =
   | SourcifyLibErrorParameters
@@ -286,6 +287,8 @@ export function getVerificationErrorMessage(
       return "The server encountered an unexpected error.";
     case "no_similar_match_found":
       return "No similar verified contracts were found in the database.";
+    case "similarity_search_timeout":
+      return "The search for similar verified contracts took too long to complete. This can happen when the contract's bytecode starts with a very common prefix.";
     default:
       return getErrorMessageFromCode(params as SourcifyLibErrorParameters);
   }
