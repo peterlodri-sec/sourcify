@@ -10,7 +10,8 @@ export type ProxyType =
   | "DiamondProxy"
   | "PROXIABLEProxy"
   | "ZeppelinOSProxy"
-  | "SequenceWalletProxy";
+  | "SequenceWalletProxy"
+  | "MaticProxy";
 
 export type Implementation = { address: string; name?: string };
 
@@ -19,6 +20,16 @@ export interface ProxyDetectionResult {
   proxyType: ProxyType | null;
   implementations: Implementation[];
 }
+
+// Polygon / Matic UpgradableProxy implementation storage slot:
+// keccak256("matic.network.proxy.implementation")
+const MATIC_IMPLEMENTATION_SLOT =
+  "0xbaab7dbf64751104133af04abc7d9979f0fda3b059a322a8333f533d3f32bf7f";
+// ASCII hex representation of "matic.network.proxy.implementation"
+const MATIC_PREIMAGE_HEX =
+  "6d617469632e6e6574776f726b2e70726f78792e696d706c656d656e746174696f6e";
+const MATIC_SLOT_HASH_HEX =
+  "baab7dbf64751104133af04abc7d9979f0fda3b059a322a8333f533d3f32bf7f";
 
 export async function detectAndResolveProxy(
   bytecode: string,
@@ -122,7 +133,43 @@ export async function detectAndResolveProxy(
     checkedProxyTypes.add(proxy.name as ProxyType);
   }
 
+  // Polygon (Matic) UpgradableProxy detection:
+  // Checks if the bytecode references either the preimage string or slot hash,
+  // and queries the implementation slot directly from the chain storage.
+  if (isMaticProxyBytecode(bytecode)) {
+    try {
+      const rawSlot = await sourcifyChain.getStorageAt(
+        address,
+        MATIC_IMPLEMENTATION_SLOT,
+      );
+      const normalizedSlot = rawSlot.startsWith("0x")
+        ? rawSlot.slice(2)
+        : rawSlot;
+      const cleanAddressHex = normalizedSlot.slice(-40);
+      const resolvedAddress = "0x" + cleanAddressHex.toLowerCase();
+      if (resolvedAddress !== "0x0000000000000000000000000000000000000000") {
+        return {
+          isProxy: true,
+          proxyType: "MaticProxy",
+          implementations: [{ address: resolvedAddress }],
+        };
+      }
+    } catch (err) {
+      // Storage read failed or non-contract
+    }
+  }
+
   return { isProxy: false, proxyType: null, implementations: [] };
+}
+
+function isMaticProxyBytecode(bytecode: string): boolean {
+  const normalized = (
+    bytecode.startsWith("0x") ? bytecode.slice(2) : bytecode
+  ).toLowerCase();
+  return (
+    normalized.includes(MATIC_PREIMAGE_HEX) ||
+    normalized.includes(MATIC_SLOT_HASH_HEX)
+  );
 }
 
 function isEIP1167Proxy(bytecode: string, resolvedAddress: string): boolean {

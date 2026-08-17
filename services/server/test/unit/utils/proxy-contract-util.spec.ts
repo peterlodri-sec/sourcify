@@ -118,6 +118,28 @@ describe("proxy contract util", function () {
     });
   });
 
+  it("should detect MaticProxy (Polygon UpgradableProxy)", async function () {
+    mockSourcifyChain.getStorageAt = sandbox
+      .stub()
+      .resolves(
+        "000000000000000000000000490e379c9cff64944be82b849f8fd5972c7999a7",
+      );
+
+    const result = await detectAndResolveProxy(
+      proxyBytecodes.MaticProxy,
+      "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
+      mockSourcifyChain,
+    );
+
+    chai.expect(result).to.deep.equal({
+      isProxy: true,
+      proxyType: "MaticProxy",
+      implementations: [
+        { address: "0x490e379c9cff64944be82b849f8fd5972c7999a7" },
+      ],
+    });
+  });
+
   it("should return false for factories that deploy proxies", async function () {
     // Based on 0x7dB8637A5fd20BbDab1176BdF49C943A96F2E9c6 deployed on ETH Mainnet
     const result = await detectAndResolveProxy(

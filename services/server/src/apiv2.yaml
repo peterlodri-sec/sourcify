@@ -1804,6 +1804,7 @@ components:
         - PROXIABLEProxy
         - ZeppelinOSProxy
         - SequenceWalletProxy
+        - MaticProxy
         - null
       title: ProxyType
     VerificationJob:
